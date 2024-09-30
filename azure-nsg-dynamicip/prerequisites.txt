@@ -1,0 +1,21 @@
+Azure CLI must be installed and logged in. You can install the Azure CLI from here.
+jq for parsing JSON. Install it using:
+--> sudo apt-get install jq -y
+
+Steps to Run the Script:
+
+Set Variables:
+Replace <YOUR_SUBSCRIPTION_ID>, <YOUR_RESOURCE_GROUP>, <YOUR_NSG_NAME>, and <YOUR_NSG_RULE_NAME> with your actual Azure values.
+
+Make the Script Executable:
+chmod +x update_nsg.sh
+
+Run the Script:
+./update_nsg.sh
+
+What the Script Does:
+Fetches the current public IP using the ipify.org service.
+Retrieves the existing NSG rule details using az network nsg rule show.
+Parses the rule's attributes such as priority, access, and destination port ranges using jq.
+Updates the NSG rule to use the current public IP as the source address prefix (<public_ip>/32).
+This script automates the process of updating your Azure NSG rule to whitelist your dynamic public IP.
