@@ -1,0 +1,26 @@
+AWS CLI installed and configured. You can install it here.
+
+jq for parsing JSON. Install it using:
+--> sudo apt-get install jq -y
+
+Steps to Run the Script:
+
+Set Variables:
+Replace <YOUR_SUBSCRIPTION_ID>, <YOUR_RESOURCE_GROUP>, <YOUR_NSG_NAME>, and <YOUR_NSG_RULE_NAME> with your actual Azure values.
+
+Make the Script Executable:
+chmod +x update_aws_sg.sh
+
+
+Run the Script:
+./update_aws_sg.sh
+
+
+What the Script Does:
+Explanation:
+Fetches the current public IP using curl and the ipify API.
+Describes the security group to check for the current IP permissions using aws ec2 describe-security-groups and jq to parse the result.
+Revokes the current security group ingress rule using aws ec2 revoke-security-group-ingress for the specific port and IP range.
+Authorizes a new rule with the updated public IP using aws ec2 authorize-security-group-ingress.
+
+This script automates the process of updating the ingress rules of an AWS Security Group with your current public IP, helping you maintain secure access to resources like EC2 instances
