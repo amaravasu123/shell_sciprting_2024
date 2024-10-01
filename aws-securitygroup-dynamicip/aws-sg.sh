@@ -2,56 +2,74 @@
 
 #!/bin/bash
 
-# Variables
-security_group_id="<YOUR_SECURITY_GROUP_ID>"
-region="us-east-1"  # Replace with your AWS region
-port="<YOUR_PORT>"  # Replace with the port number for the rule (e.g., 22 for SSH)
+# Check AWS CLI authentication
+aws sts get-caller-identity > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+  echo "Error: You must configure your AWS CLI with 'aws configure'."
+  exit 1
+fi
+
+# Variables (accept as parameters)
+security_group_name="${1:-<YOUR_SECURITY_GROUP_NAME>}" # Name of the security group
+vpc_id="${2:-<YOUR_VPC_ID>}"                            # VPC ID where the security group will be created
+destination_port_ranges="${3:-22}"                       # Dynamically passed port range, defaults to 22 (SSH) if not provided
 
 # Fetch current public IP
 public_ip=$(curl -s https://api.ipify.org)
-
+if [ -z "$public_ip" ]; then
+  echo "Error: Failed to fetch public IP. Check your internet connection."
+  exit 1
+fi
 echo "Your current public IP: $public_ip"
 
-# Fetch the existing security group rule for the specified port
-existing_rule=$(aws ec2 describe-security-groups --group-ids $security_group_id --region $region | jq -r \
-    --arg port "$port" '.SecurityGroups[0].IpPermissions[] | select(.FromPort == ($port | tonumber))')
+# Check if the Security Group exists
+sg_id=$(aws ec2 describe-security-groups --filters "Name=group-name,Values=$security_group_name" --query "SecurityGroups[0].GroupId" --output text)
 
-if [ -z "$existing_rule" ]; then
-    echo "Error: No existing rule found for port $port in Security Group $security_group_id."
+if [ "$sg_id" == "None" ]; then
+  # Create the Security Group if it does not exist
+  echo "Security Group '$security_group_name' not found. Creating a new Security Group..."
+  sg_id=$(aws ec2 create-security-group --group-name $security_group_name --description "Security Group for dynamic IP updates" --vpc-id $vpc_id --query "GroupId" --output text)
+
+  if [ $? -ne 0 ]; then
+    echo "Error: Failed to create Security Group."
     exit 1
-fi
+  fi
 
-# Extract the current CIDR block for the rule
-current_cidr=$(echo $existing_rule | jq -r '.IpRanges[0].CidrIp')
-
-echo "Current CIDR for the rule: $current_cidr"
-
-# Revoke the existing rule
-aws ec2 revoke-security-group-ingress \
-  --group-id $security_group_id \
-  --protocol tcp \
-  --port $port \
-  --cidr $current_cidr \
-  --region $region
-
-if [ $? -eq 0 ]; then
-    echo "Revoked existing rule with CIDR $current_cidr"
+  echo "Security Group created with ID: $sg_id"
 else
-    echo "Error: Failed to revoke the existing rule."
-    exit 1
+  echo "Using existing Security Group with ID: $sg_id"
 fi
 
-# Authorize the new rule with the updated public IP
+# Check if the rule for the port already exists
+existing_rule=$(aws ec2 describe-security-groups --group-ids $sg_id --query "SecurityGroups[0].IpPermissions[?ToPort==\`$destination_port_ranges\`]" --output text)
+
+# If the rule exists, revoke it
+if [ -n "$existing_rule" ]; then
+  echo "Revoking old security group rule..."
+  aws ec2 revoke-security-group-ingress \
+    --group-id $sg_id \
+    --protocol tcp \
+    --port $destination_port_ranges \
+    --cidr "$public_ip/32"
+  
+  if [ $? -ne 0 ]; then
+    echo "Error: Failed to revoke old Security Group rule."
+    exit 1
+  fi
+fi
+
+# Authorize new security group rule with the new public IP
+echo "Authorizing new security group rule with public IP: $public_ip/32 and port: $destination_port_ranges"
 aws ec2 authorize-security-group-ingress \
-  --group-id $security_group_id \
+  --group-id $sg_id \
   --protocol tcp \
-  --port $port \
-  --cidr "$public_ip/32" \
-  --region $region
+  --port $destination_port_ranges \
+  --cidr "$public_ip/32"
 
 if [ $? -eq 0 ]; then
-    echo "Security Group rule updated successfully with new IP: $public_ip/32"
+  echo "Security Group rule updated successfully!"
 else
-    echo "Error: Failed to update Security Group rule."
-    exit 1
+  echo "Error: Failed to update Security Group rule."
+  exit 1
 fi
+ 
