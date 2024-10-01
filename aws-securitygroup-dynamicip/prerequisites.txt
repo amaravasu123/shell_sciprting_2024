@@ -14,6 +14,9 @@ chmod +x update_aws_sg.sh
 
 Run the Script:
 ./update_aws_sg.sh
+./update_aws_sg.sh <SECURITY_GROUP_NAME> <VPC_ID> <DESTINATION_PORT_RANGE>
+./update_aws_sg.sh "MyDynamicSG" "vpc-12345678" "443"
+
 
 
 What the Script Does:
