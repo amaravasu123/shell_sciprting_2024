@@ -1,6 +1,3 @@
-#This script automates the process of updating your Azure NSG rule to whitelist your dynamic public IP using shell scirpting
-#sudo apt-get install jq -y
-
 #!/bin/bash
 
 # Variables
@@ -32,6 +29,12 @@ access=$(echo $nsg_rule | jq -r '.access')
 direction=$(echo $nsg_rule | jq -r '.direction')
 protocol=$(echo $nsg_rule | jq -r '.protocol')
 destination_port_ranges=$(echo $nsg_rule | jq -r '.destinationPortRanges[]')
+
+# Check if destination_port_ranges is empty or null
+if [ -z "$destination_port_ranges" ]; then
+  echo "Error: Destination port range is empty. Ensure the NSG rule has a valid port range."
+  exit 1
+fi
 
 # Update NSG rule with the new public IP
 echo "Updating NSG rule with new public IP: $public_ip/32"
