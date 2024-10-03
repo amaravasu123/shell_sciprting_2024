@@ -1,3 +1,6 @@
+#To allow access from remote hosts, you need to modify the context.xml file for the Host Manager. Open the file located at conf/Catalina/localhost/host-manager.xml:
+
+
 #!/bin/bash
 
 # Update and install dependencies
