@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Variables
 TOMCAT_VERSION=10.1.30
 TOMCAT_USER=tomcat
@@ -53,21 +55,3 @@ sudo systemctl enable tomcat
 
 # Configure user authentication
 sudo bash -c 'cat << EOF > /opt/tomcat/conf/tomcat-users.xml
-<tomcat-users>
-  <role rolename="manager-gui"/>
-  <role rolename="admin-gui"/>
-  <user username="admin" password="s3cret" roles="manager-gui,admin-gui"/>
-</tomcat-users>
-EOF'
-
-# Allow access from remote hosts
-sudo bash -c 'cat << EOF > /opt/tomcat/conf/Catalina/localhost/host-manager.xml
-<Context antiResourceLocking="false" privileged="true">
-  <Valve className="org.apache.catalina.valves.RemoteAddrValve" allow="^.*$" />
-</Context>
-EOF'
-
-# Restart Tomcat to apply changes
-sudo systemctl restart tomcat
-
-echo "Tomcat installation and configuration complete. Access it at http://your_server_ip:8080"
